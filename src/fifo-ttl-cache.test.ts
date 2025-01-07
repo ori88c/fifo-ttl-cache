@@ -66,6 +66,7 @@ describe('FIFOCache tests', () => {
       const sampleRandomKey = () => Math.ceil(Math.random() * maxRandomKey);
       for (let attempt = 1; attempt <= sampleAttemptsCount; ++attempt) {
         const nonPresentKey = sampleRandomKey();
+        expect(cache.has(nonPresentKey)).toBe(false);
         expect(cache.get(nonPresentKey)).toBeUndefined();
       }
     });
@@ -78,6 +79,7 @@ describe('FIFOCache tests', () => {
       for (let key = 1; key <= MOCK_CAPACITY; ++key) {
         const expectedValue = key;
         expect(cache.get(key)).toBe(expectedValue);
+        expect(cache.has(key)).toBe(true);
       }
 
       // Inserting new keys should trigger eviction of the oldest keys in sequence.
@@ -89,12 +91,14 @@ describe('FIFOCache tests', () => {
         // Validate that the oldest key is still accessible before insertion.
         const oldestKeyBeforeInsertion = key - MOCK_CAPACITY;
         expect(cache.get(oldestKeyBeforeInsertion)).toBe(oldestKeyBeforeInsertion);
+        expect(cache.has(oldestKeyBeforeInsertion)).toBe(true);
 
         // Insert the new key into the cache.
         const value = key; // Assign the key as the value for simplicity.
         cache.set(key, value);
 
         // Verify that the oldest key has been evicted post-insertion.
+        expect(cache.has(oldestKeyBeforeInsertion)).toBe(false);
         expect(cache.get(oldestKeyBeforeInsertion)).toBeUndefined();
       }
 
@@ -114,6 +118,7 @@ describe('FIFOCache tests', () => {
       jest.advanceTimersByTime(nearExpirationIncrementMs);
       for (let key = 1; key <= MOCK_CAPACITY; ++key) {
         const expectedValue = key;
+        expect(cache.has(key)).toBe(true);
         expect(cache.get(key)).toBe(expectedValue);
       }
 
@@ -122,6 +127,7 @@ describe('FIFOCache tests', () => {
       let remainingItemsCount = MOCK_CAPACITY;
       jest.advanceTimersByTime(expirationRemainderMs);
       for (let key = 1; key <= MOCK_CAPACITY; ++key) {
+        expect(cache.has(key)).toBe(false);
         expect(cache.get(key)).toBeUndefined(); // Item should be evicted.
         --remainingItemsCount;
         expect(cache.size).toBe(remainingItemsCount); // Cache size should decrement.
@@ -155,12 +161,14 @@ describe('FIFOCache tests', () => {
         // Verify the initial value before updating.
         const oldValue = sampledKey * currentCycle;
         expect(cache.get(sampledKey)).toBe(oldValue);
+        expect(cache.has(sampledKey)).toBe(true);
 
         // Update the value for the current key.
         const updatedValue = sampledKey * (currentCycle + 1);
         cache.set(sampledKey, updatedValue);
 
         // Verify the updated value and ensure the cache size remains constant.
+        expect(cache.has(sampledKey)).toBe(true);
         expect(cache.get(sampledKey)).toBe(updatedValue);
         expect(cache.size).toBe(MOCK_CAPACITY);
       }
@@ -186,10 +194,12 @@ describe('FIFOCache tests', () => {
 
         // Ensure the key exists and retrieve its value before deletion.
         const expectedValue = sampledKey;
+        expect(cache.has(sampledKey)).toBe(true);
         expect(cache.get(sampledKey)).toBe(expectedValue);
 
         // Delete the sampled key from the cache.
         expect(cache.delete(sampledKey)).toBe(true);
+        expect(cache.has(sampledKey)).toBe(false);
         --remainingItemsCount;
 
         // A return value of 'false' indicates an attempt to delete a non-existent key.
@@ -197,6 +207,7 @@ describe('FIFOCache tests', () => {
 
         // Confirm the key has been successfully deleted and the cache size
         // decreases as expected.
+        expect(cache.has(sampledKey)).toBe(false);
         expect(cache.get(sampledKey)).toBeUndefined();
         expect(cache.size).toBe(remainingItemsCount);
       }

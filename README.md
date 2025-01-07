@@ -1,11 +1,12 @@
 <h2 align="middle">fifo-ttl-cache</h2>
 
-The `FIFOCache` class provides a First-In-First-Out (FIFO) caching mechanism with a fixed Time-To-Live (TTL), ensuring automatic removal of outdated records.
+The `FIFOCache` class provides a First-In-First-Out (FIFO) caching mechanism with a fixed Time-To-Live (TTL), ensuring automatic removal of outdated entries.
 
 Unlike the widely used LRU Cache, a FIFO Cache does not prioritize keeping popular keys cached for extended durations. This simplicity reduces implementation overhead and generally offers **faster response times**. FIFO caches are particularly well-suited for scenarios where:
 * __Short-term key popularity__: Useful for situations where certain keys experience brief periods of higher activity (e.g., a 15-minute spike). For instance, in a background service aggregating data from a customer’s IoT sensors, caching customer details during the aggregation process enhances performance without compromising data relevance.
 * __Uniform key distribution__: Effective when key popularity is relatively consistent and predictable.
 * __Freshness of values is critical__: Ideal for security-sensitive use cases or environments where up-to-date data is essential.
+* __The cache size closely matches the total number of potential keys__: In scenarios where most of the possible keys are already cached, eviction due to limited capacity becomes negligible. As a result, the key-reordering mechanism of an LRU Cache offers little benefit and adds unnecessary overhead.
 
 ## Table of Contents :bookmark_tabs:
 
@@ -20,8 +21,8 @@ Unlike the widely used LRU Cache, a FIFO Cache does not prioritize keeping popul
 
 ## Key Features :sparkles:<a id="key-features"></a>
 
-- __FIFO Cache__: Automatically evicts the oldest record (based on insertion time) when the cache reaches its capacity and a new record with a non-existing key is added, irrespective of the record’s popularity.
-- __Fixed TTL__: Ensures all cached records share the same Time-to-Live (TTL) duration, allowing for automatic eviction of stale entries.
+- __FIFO Cache__: Automatically evicts the oldest entry (based on insertion time) when the cache reaches its capacity and a new entry with a non-existing key is added, irrespective of the entry’s popularity.
+- __Fixed TTL__: Ensures all cached entries share the same Time-to-Live (TTL) duration, allowing for automatic eviction of stale entries.
 - __Efficiency :gear:__: JavaScript's `Map` maintains the insertion order of keys, offering a reliable and **often overlooked** guarantee for iteration. This guarantee is leveraged in `FIFOCache` to eliminate the need for manually managing insertion order for eviction purposes.
 - __Comprehensive Documentation :books:__: The class is thoroughly documented, enabling IDEs to provide helpful tooltips that enhance the coding experience.
 - __Tests :test_tube:__: **Fully covered** by comprehensive unit tests.
@@ -35,8 +36,9 @@ The `FIFOCache` class provides the following methods:
 
 * __set__: Adds or updates a key-value pair in the cache.
 * __get__: Retrieves the value associated with the specified key, provided the key exists in the cache and its TTL has not expired.
-* __delete__: Removes the cached record associated with the specified key, if such a record exists in the cache.
-* __clear__: Removes all records from the cache, leaving it empty.
+* __has__: Determines whether the cache contains a valid, non-expired entry for the specified key. This method is particularly useful when the cache is employed as a Set-like structure, where the presence of a key is significant but the associated value is secondary or unnecessary.
+* __delete__: Removes the cached entry associated with the specified key, if such a entry exists in the cache.
+* __clear__: Removes all entries from the cache, leaving it empty.
 
 If needed, refer to the code documentation for a more comprehensive description.
 
@@ -45,29 +47,29 @@ If needed, refer to the code documentation for a more comprehensive description.
 The `FIFOCache` class provides the following getter methods to reflect the current state:
 
 * __size__: The number of items currently stored in this instance.
-* __isEmpty__: Indicates whether the cache does not contain any record.
+* __isEmpty__: Indicates whether the cache does not contain any entries.
 
 To eliminate any ambiguity, all getter methods have **O(1)** time and space complexity.
 
 ## Eviction Policy :wastebasket:<a id="eviction-policy"></a>
 
-Cache records are evicted under the following conditions:
+Cache entries are evicted under the following conditions:
 * The cache reaches its maximum capacity: The oldest key (based on insertion time) is removed.
 * A key's value becomes outdated (its TTL has expired).
 
 ## Event-Driven Eviction :dart:<a id="event-driven-eviction"></a>
 
-The eviction policy of this class is event-driven, avoiding periodic callbacks for removing outdated records. Instead, outdated keys are removed under the following circumstances:
+The eviction policy of this class is event-driven, avoiding periodic callbacks for removing outdated entries. Instead, outdated keys are removed under the following circumstances:
 * During a `set` operation: If adding a new entry exhausts the maximum allowed capacity, the oldest key (based on insertion time) is evicted.
 * During a `get` operation: Outdated keys are validated and removed to prevent returning stale cached values.
 
-While some cache variants employ actively scheduled eviction for each record, this approach has notable drawbacks:
+While some cache variants employ actively scheduled eviction for each entry, this approach has notable drawbacks:
 * __Time Complexity Impact__: Each `setTimeout` adds a task to Node.js's internal priority queue for scheduled events. When a large number of timers exist, managing this queue (e.g., inserting and removing timers) incurs additional overhead due to the logarithmic time complexity of queue operations.
 * __Event Loop Latency__: A surge of timers firing simultaneously or in rapid succession can degrade event loop performance, delaying critical operations such as I/O processing and other asynchronous tasks.
 * __Space Complexity Impact__: Each `setTimeout` occupies memory in the heap for its context and execution details. A cache with many entries can thus lead to significant memory consumption, which may not scale well in high-throughput or resource-constrained environments.
 * __GC Pressure__: The existence of many timers increases garbage collection pressure because timers hold references to their associated data. These references can lead to delayed memory reclamation, particularly if the timers expire over a long period.
 
-Periodic eviction of stale **batches** is another non-event-driven strategy often employed in FIFO caches, as insertion order simplifies batch identification. However, it is prone to retaining stale records longer than necessary and can cause **latency spikes** during batch processing, making it less suitable for time-sensitive or high-demand applications.
+Periodic eviction of stale **batches** is another non-event-driven strategy often employed in FIFO caches, as insertion order simplifies batch identification. However, it is prone to retaining stale entries longer than necessary and can cause **latency spikes** during batch processing, making it less suitable for time-sensitive or high-demand applications.
 
 Overall, the event-driven strategy ensures true O(1) eviction while avoiding indirect overhead on Node.js's internal structures.
 
